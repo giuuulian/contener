@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  prenomservice:
+    build: ./prenomservice
+    ports:
+      - "8081:80"
+    networks:
+      - app-network
+
+  rentalservice:
+    build: ./RentalService
+    ports:
+      - "8080:8080"
+    depends_on:
+      - prenomservice
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
