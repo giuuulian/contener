@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestionnaire de Tâches</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 600px; margin: 30px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        h1 { color: #333; text-align: center; margin-bottom: 30px; }
+        input, textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; font-family: Arial; }
+        button { width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 10px 0; }
+        button:hover { background: #764ba2; }
+        .task { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
+        .task.done { opacity: 0.6; text-decoration: line-through; }
+        .task-info { flex: 1; }
+        .task-title { font-weight: bold; }
+        .task-desc { color: #666; font-size: 0.9em; }
+        .btns { display: flex; gap: 10px; }
+        .btn-sm { padding: 6px 12px; font-size: 0.85em; border: none; border-radius: 3px; cursor: pointer; color: white; }
+        .btn-ok { background: #4CAF50; }
+        .btn-del { background: #f44336; }
+        .count { text-align: center; color: #666; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 Tâches</h1>
+        <input type="text" id="title" placeholder="Titre de la tâche">
+        <textarea id="desc" placeholder="Description" rows="3"></textarea>
+        <button onclick="add()">Ajouter</button>
+        <div id="tasks"></div>
+        <div class="count" id="count"></div>
+    </div>
+
+    <script>
+        const API = 'http://' + window.location.hostname + ':5000/api';
+        
+        async function load() {
+            try {
+                const res = await fetch(API + '/tasks');
+                const tasks = await res.json();
+                render(tasks);
+            } catch (e) {
+                document.getElementById('count').textContent = 'Erreur: ' + e.message;
+            }
+        }
+
+        async function add() {
+            const title = document.getElementById('title').value;
+            const desc = document.getElementById('desc').value;
+            if (!title) { alert('Titre requis'); return; }
+            
+            try {
+                await fetch(API + '/tasks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, description: desc })
+                });
+                document.getElementById('title').value = '';
+                document.getElementById('desc').value = '';
+                load();
+            } catch (e) {
+                alert('Erreur: ' + e.message);
+            }
+        }
+
+        async function toggle(id, done) {
+            try {
+                await fetch(API + '/tasks/' + id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ completed: !done })
+                });
+                load();
+            } catch (e) {
+                alert('Erreur');
+            }
+        }
+
+        async function del(id) {
+            try {
+                await fetch(API + '/tasks/' + id, { method: 'DELETE' });
+                load();
+            } catch (e) {
+                alert('Erreur');
+            }
+        }
+
+        function render(tasks) {
+            const el = document.getElementById('tasks');
+            el.innerHTML = '';
+            tasks.forEach(t => {
+                const div = document.createElement('div');
+                div.className = 'task' + (t.completed ? ' done' : '');
+                div.innerHTML = `
+                    <div class="task-info">
+                        <div class="task-title">${t.title}</div>
+                        <div class="task-desc">${t.description || 'Pas de description'}</div>
+                    </div>
+                    <div class="btns">
+                        <button class="btn-sm btn-ok" onclick="toggle('${t._id}', ${t.completed})">${t.completed ? 'Annuler' : 'Fait'}</button>
+                        <button class="btn-sm btn-del" onclick="del('${t._id}')">Supprimer</button>
+                    </div>
+                `;
+                el.appendChild(div);
+            });
+            document.getElementById('count').textContent = tasks.length + ' tâche(s)';
+        }
+
+        load();
+        setInterval(load, 3000);
+    </script>
+</body>
+</html>
